@@ -1,8 +1,13 @@
-function [omega, E, H, err] = test_eigenmode(type, amp, ds, base_omega, epsilon, max_iters, err_lim)
+function [omega, E, H, err] = arm_eig(type, E0, amp, ds, base_omega, max_iters, err_lim)
     
+    path(path, genpath('../fds-client/'));
+
+    v = load('armand1.mat');
+    epsilon = v.epsilon;
+
     % Get the initial E-field (and other values) needed to find the eigenmode.
     [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim] = ...
-        get_case(type, amp, ds, base_omega, double(epsilon));
+        get_case(type, E0, amp, ds, base_omega, double(epsilon));
         
     % Find the eigenmode.
     [omega, E, H, err] = eigenmode(sim, omega, E, ...
@@ -15,11 +20,11 @@ function [omega, E, H, err] = test_eigenmode(type, amp, ds, base_omega, epsilon,
             real(omega), imag(omega), err.actual, err.E, err.H);
 
 function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = ...
-            get_case(type, amp, ds, base_omega, epsilon, varargin)
+            get_case(type, E0, amp, ds, base_omega, epsilon, varargin)
 
     %% Form the excitation source.
     spr = [-1:1];
-    pos = {[352; 158], [455; 194], [350; 230], [245; 196]}
+    pos = {[352; 158], [455; 194], [350; 230], [245; 196]};
     if strcmp(type, 'iso')
         cnt = find(amp == 1);
         cnt = cnt(1); 
@@ -28,13 +33,18 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
         J = {zeros(dims), zeros(dims), zeros(dims)}; 
         c = round(dims/2);
         J{2}(c(1)+spr, c(2)+spr, c(3)+spr) = 1;
-    else
-        dims = size(epsilon);
+    elseif strcmp(type, 'point')
+        dims = size(epsilon)
         J = {zeros(dims), zeros(dims), zeros(dims)}; 
         for k = 1 : length(pos) 
                 % pos{k} = pos{k} - 100;
                 J{2}(pos{k}(1)+spr, pos{k}(2)+spr, dims(3)/2+spr) = amp(k);
         end
+    elseif strcmp(type, 'initialE')
+        dims = size(epsilon);
+        J = {zeros(dims), zeros(dims), zeros(dims)}; 
+    else 
+        error('Invalid TYPE.');
     end
 
     %% Downsample both the frequency, epsilon, and excitation.
@@ -71,17 +81,30 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
     % pause
 
     %% Get guess field.
-    if isempty(varargin)
+    if strcmp(type, 'initialE')
+        for k = 1 : 4
+            c = round(pos{k}/ds); % Center the things here.
+            c(3) = round(dims(3)/2);
+            for l = 1 : 3
+                s = size(E0{k}{l});
+                bi = round(c(:)-s(:)/2); % start indices.
+                ei = round(c(:)+s(:)/2)-1; % end indices.
+                E{l}(bi(1):ei(1), bi(2):ei(2), bi(3):ei(3)) = ...
+                    E{l}(bi(1):ei(1), bi(2):ei(2), bi(3):ei(3)) + amp(k) * E0{k}{l};
+            end
+        end
+            
+    else
         title('Initial simulation');
         [E, H, err] = sim_eig(omega, J);
 %         if strcmp(type, 'iso')
 %             for k = 1 : 3
 %                 D{k} = zeros(dims);
 %                 D{k}(
-    else
-        E = varargin{1};
-    end
-    
+    end 
+    % subplot 111
+    imagesc(E{2}(:,:,zc)'); axis equal tight;
+    % pause
     
 %% Calculates s_prim and s_dual for a regularly spaced grid of dimension DIMS.
 % Grid spacing assumed to be 1.
