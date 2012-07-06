@@ -1,20 +1,18 @@
-function [omega, E, H, err] = arm_eig(type, E0, amp, ds, base_omega, max_iters, err_lim)
+function [omega, E, H, err, epsilon] = arm_eig(type, epsilon, E0, amp, ds, base_omega, max_iters, err_lim, chop)
     
     path(path, genpath('../fds-client/'));
 
-    v = load('armand1.mat');
-    epsilon = v.epsilon;
+    epsilon = epsilon(chop(1)+1:end-chop(1), chop(2)+1:end-chop(2), :);
 
     % Get the initial E-field (and other values) needed to find the eigenmode.
     [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim] = ...
         get_case(type, E0, amp, ds, base_omega, double(epsilon));
-        
+
     % Find the eigenmode.
     [omega, E, H, err] = eigenmode(sim, omega, E, ...
                                     d_prim, d_dual, s_prim, s_dual, ...
                                     mu, epsilon, ...
                                     max_iters, err_lim);
-
 
     fprintf('Omega: %1.3e + i%1.3e\nErrors: %e (actual), %e (E), %e (H)\n', ...
             real(omega), imag(omega), err.actual, err.E, err.H);
@@ -24,7 +22,12 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
 
     %% Form the excitation source.
     spr = [-1:1];
-    pos = {[352; 158], [455; 194], [350; 230], [245; 196]};
+    pos = {[0; -36], [105; 0], [0; 36], [-105; 0]};
+    center = round(size(epsilon)/2);
+    center = center(:);
+    for k = 1 : 4
+        pos{k}(:) = pos{k}(:) + center(1:2);
+    end
     if strcmp(type, 'iso')
         cnt = find(amp == 1);
         cnt = cnt(1); 
@@ -40,7 +43,7 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
                 % pos{k} = pos{k} - 100;
                 J{2}(pos{k}(1)+spr, pos{k}(2)+spr, dims(3)/2+spr) = amp(k);
         end
-    elseif strcmp(type, 'initialE')
+    elseif strcmp(type, 'initialE') || strcmp(type, 'initialJ')
         dims = size(epsilon);
         J = {zeros(dims), zeros(dims), zeros(dims)}; 
     else 
@@ -81,9 +84,10 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
     % pause
 
     %% Get guess field.
-    if strcmp(type, 'initialE')
+    if strcmp(type, 'initialE') || strcmp(type, 'initialJ')
         for k = 1 : 4
-            c = round(pos{k}/ds); % Center the things here.
+            c = floor(pos{k}/ds) + 1; % Center the things here.
+            c(2) = c(2) + 1;
             c(3) = round(dims(3)/2);
             for l = 1 : 3
                 s = size(E0{k}{l});
@@ -94,6 +98,14 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
             end
         end
             
+        % subplot 111
+        imagesc(real(epsilon{3}(:,:,zc)' + 20*E{2}(:,:,zc)')); axis equal tight;
+        % pause
+
+        if strcmp(type, 'initialJ')
+            title('Initial simulation');
+            [E, H, err] = sim_eig(omega, E);
+        end
     else
         title('Initial simulation');
         [E, H, err] = sim_eig(omega, J);
@@ -102,9 +114,6 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
 %                 D{k} = zeros(dims);
 %                 D{k}(
     end 
-    % subplot 111
-    imagesc(E{2}(:,:,zc)'); axis equal tight;
-    % pause
     
 %% Calculates s_prim and s_dual for a regularly spaced grid of dimension DIMS.
 % Grid spacing assumed to be 1.
@@ -129,7 +138,7 @@ function [E, H, err] = my_sim(omega, d_prim, d_dual, s_prim, s_dual, ...
                         fds_max_iters, fds_err_lim, view_option);
 
     subplot(3,1,2:3);
-    imagesc(abs(E{E_index}(:,:,E_loc)')); axis equal tight;
+    imagesc(real(E{E_index}(:,:,E_loc)')); axis equal tight;
 
     subplot 321;
     drawnow

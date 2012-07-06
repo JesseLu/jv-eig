@@ -1,8 +1,8 @@
-function [E0] = arm_E0(cutout_dims)
+function [E0] = arm_E0(res, cutout_dims)
     s = round(cutout_dims/2);
-    v = load('quad_script_resd.mat');
+    % v = load('quad_script_resd.mat');
     for k = 1 : 4
-        E = v.res{k}{2};
+        E = res{k}{2};
         c = round(size(E{1})/2);
         for l = 1 : 3 % cutout.
             E0{k}{l} = zeros(size(E{l}));
