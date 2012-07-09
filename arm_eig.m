@@ -70,7 +70,7 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
     %% Form the function handle to run the simulation.
     sim_fdfd = @(omega, J, E) my_sim(omega, d_prim, d_dual, s_prim, s_dual, ...
                         mu, epsilon, E, J, ...
-                        1e5, 1e-6, 'plot', ...
+                        1e6, 1e-6, 'plot', ...
                         2, round(dims(3)/2), ['amp ', num2str(amp(:)'), ' ds ', num2str(ds)]);
 
     %% The function handle that will be passed to the eigenmode function.
@@ -93,6 +93,10 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim_eig] = .
                 s = size(E0{k}{l});
                 bi = round(c(:)-s(:)/2); % start indices.
                 ei = round(c(:)+s(:)/2)-1; % end indices.
+                if bi(3) == 0
+                    bi(3) = bi(3) + 1;
+                    ei(3) = ei(3) + 1;
+                end
                 E{l}(bi(1):ei(1), bi(2):ei(2), bi(3):ei(3)) = ...
                     E{l}(bi(1):ei(1), bi(2):ei(2), bi(3):ei(3)) + amp(k) * E0{k}{l};
             end
