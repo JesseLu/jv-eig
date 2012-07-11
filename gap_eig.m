@@ -1,5 +1,4 @@
 function [omega, E, H, err] = gap_eig(case_name, exc_name, max_iters, err_lim, varargin)
-    varargin{1}
     path(path, genpath('../fds-client/'));
     if ~isempty(varargin)
         [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim] = ...
