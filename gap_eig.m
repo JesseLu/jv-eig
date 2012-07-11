@@ -1,8 +1,13 @@
-function [omega, E, H, err] = gap_eig(case_name, exc_name, max_iters, err_lim)
-
+function [omega, E, H, err] = gap_eig(case_name, exc_name, max_iters, err_lim, varargin)
+    varargin{1}
     path(path, genpath('../fds-client/'));
-    [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim] = ...
-        get_case(case_name, exc_name);
+    if ~isempty(varargin)
+        [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim] = ...
+            get_case(case_name, exc_name, varargin{1});
+    else
+        [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim] = ...
+            get_case(case_name, exc_name);
+    end
     dims = size(epsilon{1});
     [omega, E, H, err] = eigenmode(sim, omega, E, ...
                                     d_prim, d_dual, s_prim, s_dual, ...
@@ -14,7 +19,7 @@ function [omega, E, H, err] = gap_eig(case_name, exc_name, max_iters, err_lim)
             real(omega), imag(omega), err.actual, err.E, err.H);
 
 function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim2] = ...
-            get_case(name, exc_name)
+            get_case(name, exc_name, varargin)
     base_omega = 0.11;
     switch(name)
         case {'1lo', '1med', '1hi'}
@@ -56,7 +61,7 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim2] = ...
             E = {zeros(dims), zeros(dims), zeros(dims)}; 
             sim = @(omega, J, E) my_sim(omega, d_prim, d_dual, s_prim, s_dual, ...
                                 mu, epsilon, E, J, ...
-                                1e5, 1e-6, 'plot', ...
+                                1e6, 1e-6, 'plot', ...
                                 2, round(dims(3)/2), name);
 
         case {'2lo', '2med', '2hi'}
@@ -112,7 +117,7 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim2] = ...
             E = {zeros(dims), zeros(dims), zeros(dims)}; 
             sim = @(omega, J, E) my_sim(omega, d_prim, d_dual, s_prim, s_dual, ...
                                 mu, epsilon, E, J, ...
-                                1e5, 1e-6, 'plot', ...
+                                1e6, 1e-6, 'plot', ...
                                 3, round(dims(3)/2), name);
 
         otherwise
@@ -125,8 +130,12 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim2] = ...
 %     subplot 111;
     imagesc(J{3}(:,:,round(dims(3)/2))'); axis equal tight;
 %     pause
-    title('Initial simulation');
-    [E, H, err] = sim2(omega, J);
+    if ~isempty(varargin)
+        E = varargin{1};
+    else
+        title('Initial simulation');
+        [E, H, err] = sim2(omega, J);
+    end
 %     imagesc(epsilon{1}(:,:,round(dims(3)/2))'); axis equal tight;
     
     
