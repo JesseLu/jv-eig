@@ -4,9 +4,6 @@ function [omega, E, H, err] = gary_eig(filename, omega_guess)
     max_iters = 10; 
     err_lim = 1e-6;
 
-    % TODO: put files into this dir.
-    path(path, genpath('../fds-client/'));
-
     % Open the file and extract epsilon.
     xyz = 'xyz';
     for k = 1:length(xyz)
@@ -54,9 +51,8 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim2] = ...
     E = {zeros(dims), zeros(dims), zeros(dims)}; 
     sim = @(omega, J, E) my_sim(omega, d_prim, d_dual, s_prim, s_dual, ...
                         mu, epsilon, E, J, ...
-                        1e6, 1e-6, 'text', ...
+                        1e6, 1e-6, 'plot', ...
                         2, round(dims(3)/2), 'gshambat_cellpc');
-    % TODO: Change viewoption to 'plot'.
 
     % Function handle for the eigenvalue finding function.
     sim2 = @(omega, J) sim(omega, J, E);
