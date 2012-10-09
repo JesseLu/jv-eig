@@ -1,0 +1,22 @@
+Summary
+-------
+
+Matlab commands used:
+% Half-resolution (much faster, use this as a test run).
+>> [omega, E, H, err] = armand_eig(eps_2cc, 0.0799, 2) % Even-mode.
+>> [omega, E, H, err] = armand_eig(eps_2cc, 0.0804, 2) % Odd-mode.
+
+% Full-resolution (accurate).
+% Run-time is estimated at ~ 4 hours.
+% As of 2012-10-09 this is yet untested, but it _should_ work...
+>> [omega, E, H, err] = armand_eig(eps_2cc, 0.0799) % Even-mode.
+>> [omega, E, H, err] = armand_eig(eps_2cc, 0.0804) % Odd-mode.
+
+This should give you the even and odd modes.
+
+Note that eps_2cc is exactly the structure given in armandhr_eps_2cc.mat,
+that is to say, it is only half of the structure.
+
+Also note that I have truncated the structure in order to improve convergence,
+since the FDFD algorithm's convergence is dependent on problem size.
+

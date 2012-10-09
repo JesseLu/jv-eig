@@ -1,22 +1,33 @@
-function [omega, E, H, err] = gary_eig(filename, omega_guess, ds_ratio)
+function [omega, E, H, err] = armand_eig(eps, omega_guess, varargin)
+
+    if isempty(varargin)
+        ds_ratio = 1;
+    else
+        ds_ratio = varargin{1};
+    end
 
     % Constants for the eigenmode solve routine.
-    max_iters = 10; 
+    max_iters = 10;
     err_lim = 1e-6;
 
-    % TODO: put files into this dir.
-    path(path, genpath('../fds-client/'));
+%     % TODO: put files into this dir.
+%     path(path, genpath('../fds-client/'));
 
-    % Open the file and extract epsilon.
-    xyz = 'xyz';
-    for k = 1:length(xyz)
-        epsilon{k} = hdf5read(filename, ['/epsilon/E', xyz(k)]);
-        epsilon{k} = double(0.99 / sqrt(3) * epsilon{k}.^-1);
-    end
+    % Trim epsilon.
+    eps = eps(135:495, 85:270,:);
+    eps = double(eps);
+    eps = cat(3, eps(:,:,end:-1:2), eps);
+
+    % Average EPS to get epsilon on Yee cell indices.
+    my_avg = @(x, y) (0.5 * (x.^-1 + y.^-1)).^-1;
+    % my_avg = @(x, y) 0.5 * (x + y);
+    epsilon{1} = my_avg(eps, eps([2:end, 1],:,:));
+    epsilon{2} = my_avg(eps, eps(:,[2:end, 1],:));
+    epsilon{3} = my_avg(eps, eps(:,:,[2:end, 1]));
 
     % Do the initial simulation, to guess the eigenvector.
     [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim] = ...
-        initial_sim(1, omega_guess, epsilon);
+        initial_sim(ds_ratio, omega_guess, epsilon);
 
     % Find the eigenmode.
     [omega, E, H, err] = eigenmode(sim, omega, E, ...
@@ -45,24 +56,28 @@ function [omega, d_prim, d_dual, s_prim, s_dual, mu, epsilon, E, J, sim2] = ...
     mu = {ones(dims), ones(dims), ones(dims)}; 
 
     % Current source.
+    % Excite the upper-left cavity.
     J = {zeros(dims), zeros(dims), zeros(dims)}; 
     c = ceil(dims/2);
     spr = unique(round([-4/ds:4/ds]));
-    J{2}(c(1)+spr, c(2)+spr, c(3)+spr) = 1;
+    shift = -round([50, 15, 0] ./ ds);
+    J{2}(c(1)+shift(1)+spr, c(2)+shift(2)+spr, c(3)+shift(3)+spr) = 1;
+
 
     % Run the initial simulation
     E = {zeros(dims), zeros(dims), zeros(dims)}; 
     sim = @(omega, J, E) my_sim(omega, d_prim, d_dual, s_prim, s_dual, ...
                         mu, epsilon, E, J, ...
-                        1e6, 1e-6, 'text', ...
-                        2, round(dims(3)/2), 'gshambat_cellpc');
+                        1e6, 1e-6, 'plot', ...
+                        2, round(dims(3)/2), 'armand_coupled_cavities');
     % TODO: Change viewoption to 'plot'.
 
     % Function handle for the eigenvalue finding function.
     sim2 = @(omega, J) sim(omega, J, E);
     subplot 321;
-    imagesc(epsilon{3}(:,:,round(dims(3)/2))'); axis equal tight;
-%    imagesc(J{2}(:,:,round(dims(3)/2))'); axis equal tight;
+    % imagesc(epsilon{3}(:,:,round(dims(3)/2))'); axis equal tight;
+    epj = epsilon{2} + J{2};
+    imagesc(epj(:,:,round(dims(3)/2))'); axis equal tight;
     
     % Run the initial simulation.
     title('Initial simulation');
@@ -93,7 +108,7 @@ function [E, H, err] = my_sim(omega, d_prim, d_dual, s_prim, s_dual, ...
                         fds_max_iters, fds_err_lim, view_option);
 
     subplot(3,1,2:3);
-    imagesc(abs(E{E_index}(:,:,E_loc)')); axis equal tight;
+    imagesc(imag(E{E_index}(:,:,E_loc)')); axis equal tight;
 
     subplot 321;
     drawnow
